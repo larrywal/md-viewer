@@ -16,12 +16,14 @@ export default function App() {
     activeTabId,
     darkMode,
     rootPath,
+    flatMode,
+    flatViewFolder,
     closeTab,
     reopenLastClosed,
     setActiveTab,
     toggleSidebar,
   } = useAppStore();
-  const { openFile, openFolder, openFileByPath, refreshTree } = useFileSystem();
+  const { openFile, openFolder, openFolderByPath, openFileByPath, refreshTree, loadFlatFiles } = useFileSystem();
   const { activeTab, handleContentChange, handleSave, handleEscape } =
     useEditor();
 
@@ -30,6 +32,14 @@ export default function App() {
     document.documentElement.classList.toggle("dark", darkMode);
   }, [darkMode]);
 
+  // Restore last opened folder on mount
+  useEffect(() => {
+    const lastFolder = localStorage.getItem("md-viewer:lastFolder");
+    if (lastFolder) {
+      openFolderByPath(lastFolder);
+    }
+  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
+
   // Listen for file changes from watcher
   useEffect(() => {
     const unlisten = listen<string>("file-changed", async (event) => {
@@ -37,6 +47,10 @@ export default function App() {
       // Refresh tree if we have a root path
       if (rootPath) {
         await refreshTree(rootPath);
+      }
+      // Refresh flat view if active
+      if (flatMode && flatViewFolder) {
+        await loadFlatFiles(flatViewFolder);
       }
       // If the changed file is open in a tab and not dirty, reload it
       const tab = tabs.find((t) => t.path === changedPath && !t.dirty);
@@ -48,7 +62,7 @@ export default function App() {
     return () => {
       unlisten.then((fn) => fn());
     };
-  }, [rootPath, tabs, refreshTree, openFileByPath]);
+  }, [rootPath, tabs, flatMode, flatViewFolder, refreshTree, openFileByPath, loadFlatFiles]);
 
   // Keyboard shortcuts
   const handleKeyDown = useCallback(

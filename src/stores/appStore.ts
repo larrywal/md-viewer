@@ -16,6 +16,13 @@ export interface FileEntry {
   children: FileEntry[] | null;
 }
 
+export interface FlatFileEntry {
+  name: string;
+  path: string;
+  relative_path: string;
+  modified: number;
+}
+
 interface AppState {
   // Sidebar
   rootPath: string | null;
@@ -27,6 +34,11 @@ interface AppState {
   tabs: Tab[];
   activeTabId: string | null;
   closedTabs: Tab[];
+
+  // Flat mode
+  flatMode: boolean;
+  flatViewFolder: string | null;
+  flatFiles: FlatFileEntry[];
 
   // Theme
   darkMode: boolean;
@@ -49,6 +61,10 @@ interface AppState {
   markTabSaved: (id: string) => void;
   reopenLastClosed: () => void;
 
+  toggleFlatMode: () => void;
+  setFlatViewFolder: (folder: string | null) => void;
+  setFlatFiles: (files: FlatFileEntry[]) => void;
+
   setEditing: (editing: boolean) => void;
   setCursor: (line: number, col: number) => void;
   toggleDarkMode: () => void;
@@ -59,6 +75,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   fileTree: [],
   sidebarWidth: 240,
   sidebarOpen: true,
+
+  flatMode: false,
+  flatViewFolder: null,
+  flatFiles: [],
 
   tabs: [],
   activeTabId: null,
@@ -142,6 +162,15 @@ export const useAppStore = create<AppState>((set, get) => ({
       activeTabId: tab.id,
     }));
   },
+
+  toggleFlatMode: () =>
+    set((s) => ({
+      flatMode: !s.flatMode,
+      flatViewFolder: null,
+      flatFiles: [],
+    })),
+  setFlatViewFolder: (folder) => set({ flatViewFolder: folder }),
+  setFlatFiles: (files) => set({ flatFiles: files }),
 
   setEditing: (editing) => set({ editing }),
   setCursor: (line, col) => set({ cursorLine: line, cursorCol: col }),

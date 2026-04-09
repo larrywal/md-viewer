@@ -26,15 +26,5 @@
       "csp": null
     }
   },
-  "plugins": {
-    "dialog": {},
-    "fs": {
-      "scope": {
-        "allow": [
-          { "path": "$HOME/**" },
-          { "path": "/tmp/**" }
-        ]
-      }
-    }
-  }
+  "plugins": {}
 }

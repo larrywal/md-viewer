@@ -1,8 +1,17 @@
 use serde::Serialize;
 use std::fs;
 use std::path::Path;
+use std::time::UNIX_EPOCH;
 
 use crate::watcher;
+
+#[derive(Debug, Serialize, Clone)]
+pub struct FlatFileEntry {
+    pub name: String,
+    pub path: String,
+    pub relative_path: String,
+    pub modified: u64,
+}
 
 #[derive(Debug, Serialize, Clone)]
 pub struct FileEntry {
@@ -83,6 +92,62 @@ fn has_md_files(entries: &[FileEntry]) -> bool {
             true
         }
     })
+}
+
+#[tauri::command]
+pub fn read_flat_md_files(path: String) -> Result<Vec<FlatFileEntry>, String> {
+    let base = Path::new(&path);
+    let mut files = Vec::new();
+    collect_md_files(base, base, 0, &mut files).map_err(|e| format!("Failed to read directory: {}", e))?;
+    files.sort_by(|a, b| b.modified.cmp(&a.modified));
+    Ok(files)
+}
+
+fn collect_md_files(
+    base: &Path,
+    dir: &Path,
+    depth: u32,
+    out: &mut Vec<FlatFileEntry>,
+) -> Result<(), std::io::Error> {
+    if depth > 10 {
+        return Ok(());
+    }
+
+    for entry in fs::read_dir(dir)? {
+        let entry = entry?;
+        let file_name = entry.file_name().to_string_lossy().to_string();
+
+        if file_name.starts_with('.') || file_name == "node_modules" || file_name == "target" {
+            continue;
+        }
+
+        let file_path = entry.path();
+
+        if file_path.is_dir() {
+            collect_md_files(base, &file_path, depth + 1, out)?;
+        } else if file_name.ends_with(".md") {
+            let modified = entry
+                .metadata()
+                .and_then(|m| m.modified())
+                .map(|t| t.duration_since(UNIX_EPOCH).unwrap_or_default().as_secs())
+                .unwrap_or(0);
+
+            let relative_path = file_path
+                .strip_prefix(base)
+                .unwrap_or(&file_path)
+                .to_string_lossy()
+                .to_string();
+
+            out.push(FlatFileEntry {
+                name: file_name,
+                path: file_path.to_string_lossy().to_string(),
+                relative_path,
+                modified,
+            });
+        }
+    }
+
+    Ok(())
 }
 
 #[tauri::command]

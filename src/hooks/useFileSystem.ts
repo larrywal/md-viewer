@@ -1,9 +1,9 @@
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
-import { useAppStore, FileEntry } from "../stores/appStore";
+import { useAppStore, FileEntry, FlatFileEntry } from "../stores/appStore";
 
 export function useFileSystem() {
-  const { setRootPath, setFileTree, openTab } = useAppStore();
+  const { setRootPath, setFileTree, openTab, setFlatViewFolder, setFlatFiles } = useAppStore();
 
   async function openFile() {
     const selected = await open({
@@ -27,13 +27,16 @@ export function useFileSystem() {
 
     if (selected) {
       const path = selected as string;
-      setRootPath(path);
-      const tree: FileEntry[] = await invoke("read_dir_recursive", { path });
-      setFileTree(tree);
-
-      // Start watching the directory
-      await invoke("watch_directory", { path });
+      await openFolderByPath(path);
     }
+  }
+
+  async function openFolderByPath(path: string) {
+    setRootPath(path);
+    localStorage.setItem("md-viewer:lastFolder", path);
+    const tree: FileEntry[] = await invoke("read_dir_recursive", { path });
+    setFileTree(tree);
+    await invoke("watch_directory", { path });
   }
 
   async function openFileByPath(path: string) {
@@ -51,5 +54,16 @@ export function useFileSystem() {
     setFileTree(tree);
   }
 
-  return { openFile, openFolder, openFileByPath, saveFile, refreshTree };
+  async function loadFlatFiles(folderPath: string) {
+    const files: FlatFileEntry[] = await invoke("read_flat_md_files", { path: folderPath });
+    setFlatViewFolder(folderPath);
+    setFlatFiles(files);
+  }
+
+  function exitFlatFolder() {
+    setFlatViewFolder(null);
+    setFlatFiles([]);
+  }
+
+  return { openFile, openFolder, openFolderByPath, openFileByPath, saveFile, refreshTree, loadFlatFiles, exitFlatFolder };
 }

@@ -10,6 +10,7 @@ pub fn run() {
             commands::read_file,
             commands::write_file,
             commands::read_dir_recursive,
+            commands::read_flat_md_files,
             commands::watch_directory,
             commands::unwatch_directory,
         ])
